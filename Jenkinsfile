@@ -88,10 +88,32 @@ pipeline {
         }
       }
     }
-    stage('Docker Build') {
+   /* stage('Docker Build') {
         steps {
             sh 'docker build -t hsanmk/timesheet-devops:1.0.3 -f docker/Dockerfile .'
              }
+    }*/
+    stage('Docker Build') {
+        steps {
+            sh '''
+                echo "Workspace = $WORKSPACE"
+                echo "Recherche du Dockerfile…"
+                find "$WORKSPACE" -maxdepth 3 -type f -name 'Dockerfile' -print
+
+                DOCKERFILE_PATH=$(find "$WORKSPACE" -maxdepth 3 -type f -name 'Dockerfile' | head -n 1)
+
+                if [ -z "$DOCKERFILE_PATH" ]; then
+                  echo "ERREUR : aucun Dockerfile trouvé dans $WORKSPACE"
+                  exit 1
+                fi
+
+                echo "Dockerfile trouvé : $DOCKERFILE_PATH"
+                CONTEXT_DIR=$(dirname "$DOCKERFILE_PATH")
+                echo "Contexte Docker : $CONTEXT_DIR"
+
+                docker build -t hsanmk/timesheet-devops:1.0.3 -f "$DOCKERFILE_PATH" "$CONTEXT_DIR"
+            '''
+        }
     }
     /* --- Docker Build ---
     stage('Docker Build') {
@@ -131,7 +153,7 @@ pipeline {
               --output /report/trivy-image.txt \
               ${IMAGE_NAME}:${IMAGE_TAG} || true
         '''
-      }
+      } 
       post {
         always {
           archiveArtifacts artifacts: 'reports/trivy-image.*', fingerprint: true
