@@ -2,7 +2,7 @@ pipeline {
   agent any
 
   environment {
-    IMAGE_NAME  = "hsanmk/timesheet-devops"
+    IMAGE_NAME  = "hassan/timesheet-devops"
     IMAGE_TAG   = "1.0.${BUILD_NUMBER}"
     NVD_API_KEY = credentials('nvd-api-key')
   }
