@@ -88,14 +88,18 @@ pipeline {
         }
       }
     }
-
-    /* --- Docker Build --- */
+    stage('Docker Build') {
+        steps {
+            sh 'docker build -t hsanmk/timesheet-devops:1.0.3 -f docker/Dockerfile .'
+             }
+    }
+    /* --- Docker Build ---
     stage('Docker Build') {
       steps {
         sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
       }
     }
-
+ */
     /* --- Docker Scan : Trivy non bloquant (Report Only) --- */
     stage('Docker Scan - Trivy (REPORT ONLY)') {
       steps {
