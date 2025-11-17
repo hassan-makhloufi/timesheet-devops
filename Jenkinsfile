@@ -40,6 +40,7 @@ pipeline {
       }
     }
 
+    /* === 3. SCA - Dependency-Check (non bloquant) === */
     stage('SCA - Dependency-Check') {
       steps {
         sh '''
@@ -75,11 +76,9 @@ pipeline {
       }
     }
 
-
     /* === 4. SAST - SonarQube === */
     stage('SAST - SonarQube Analysis') {
       steps {
-        // "sonarqube" = nom du serveur dans Manage Jenkins → Configure System
         withSonarQubeEnv('sonarqube') {
           sh '''
             mvn -B sonar:sonar \
@@ -94,7 +93,6 @@ pipeline {
       steps {
         script {
           timeout(time: 10, unit: 'MINUTES') {
-            // Bloque le pipeline si le Quality Gate est "FAILED"
             waitForQualityGate abortPipeline: true
           }
         }
@@ -125,7 +123,7 @@ pipeline {
       }
     }
 
-    /* === 6. Docker Scan - Trivy (REPORT ONLY) === */
+    /* === 6. Docker Scan - Trivy === */
     stage('Docker Scan - Trivy') {
       steps {
         sh '''
@@ -168,4 +166,6 @@ pipeline {
       }
     }
 
-}
+  }
+
+}   
