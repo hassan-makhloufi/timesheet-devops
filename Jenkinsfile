@@ -168,4 +168,44 @@ pipeline {
 
   }
 
-}   
+  /* === 7. Notifications email globales === */
+  post {
+    always {
+      emailext(
+        to: 'hsan.mk2020@gmail.com',
+        subject: "DevSecOps - ${env.JOB_NAME} #${env.BUILD_NUMBER} : ${currentBuild.currentResult}",
+        mimeType: 'text/html',
+        body: """
+        <html>
+          <body>
+            <h2>Rapport d'exécution du pipeline DevSecOps</h2>
+            <p><b>Job :</b> ${env.JOB_NAME}</p>
+            <p><b>Build :</b> #${env.BUILD_NUMBER}</p>
+            <p><b>Résultat :</b> <span style='color:${currentBuild.currentResult == "SUCCESS" ? "green" : "red"}'>
+              ${currentBuild.currentResult}
+            </span></p>
+            <h3>Liens utiles</h3>
+            <ul>
+              <li><a href="${env.BUILD_URL}">Détail du build Jenkins</a></li>
+              <li><a href="${env.BUILD_URL}artifact/reports/dependency-check/dependency-check-report.html">
+                Rapport OWASP Dependency-Check (HTML)
+              </a></li>
+              <li><a href="${env.BUILD_URL}artifact/reports/trivy-image.txt">
+                Rapport Trivy (texte)
+              </a></li>
+              <li><a href="${env.BUILD_URL}artifact/reports/trivy-image.sarif">
+                Rapport Trivy (SARIF)
+              </a></li>
+              <li><a href="http://192.168.50.4:9000/dashboard?id=devops_git">
+                Tableau de bord SonarQube
+              </a></li>
+            </ul>
+            <p>Envoyé automatiquement par Jenkins le ${new Date()}</p>
+          </body>
+        </html>
+        """
+      )
+    }
+  }
+
+}
