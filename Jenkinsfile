@@ -15,7 +15,7 @@ pipeline {
         git branch: 'main',
             changelog: false,
             credentialsId: 'hassan-makhloufi',
-            url: 'https://github.com/tarek-ayari/devops.git'
+            url: 'https://github.com/hassan-makhloufi/timesheet-devops.git'
       }
     }
 
