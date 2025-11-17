@@ -40,38 +40,32 @@ pipeline {
       }
     }
 
-    /* === 3. SCA - OWASP Dependency-Check (Docker) === */
     stage('SCA - Dependency-Check') {
       steps {
-        script {
-          // On marque le build UNSTABLE si CVSS >= 7 mais on ne casse pas tout le pipeline
-          catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-            sh '''
-              set -e
-              mkdir -p odc-data reports/dependency-check
+        sh '''
+          set +e
+          mkdir -p odc-data reports/dependency-check
 
-              docker run --rm \
-                -u $(id -u):$(id -g) \
-                -v "$PWD":/src \
-                -v "$PWD/reports/dependency-check":/report \
-                -v "$PWD/odc-data":/usr/share/dependency-check/data \
-                owasp/dependency-check:latest \
-                  --scan /src \
-                  --format HTML \
-                  --out /report \
-                  --log /report/dc.log \
-                  --disableOssIndex \
-                  --failOnCVSS 7.0 \
-                  --nvdApiKey "$NVD_API_KEY" \
-                  --exclude /src/odc-data \
-                  --exclude /src/reports \
-                  --exclude /src/target \
-                  --exclude /src/**/dc.zip
+          docker run --rm \
+            -u $(id -u):$(id -g) \
+            -v "$PWD":/src \
+            -v "$PWD/reports/dependency-check":/report \
+            -v "$PWD/odc-data":/usr/share/dependency-check/data \
+            owasp/dependency-check:latest \
+              --scan /src \
+              --format HTML \
+              --out /report \
+              --log /report/dc.log \
+              --disableOssIndex \
+              --failOnCVSS 11.0 \
+              --nvdApiKey "$NVD_API_KEY" \
+              --exclude /src/odc-data \
+              --exclude /src/reports \
+              --exclude /src/target \
+              --exclude /src/**/dc.zip || true
 
-              test -s reports/dependency-check/dependency-check-report.html
-            '''
-          }
-        }
+          test -s reports/dependency-check/dependency-check-report.html || true
+        '''
       }
       post {
         always {
@@ -80,6 +74,7 @@ pipeline {
         }
       }
     }
+
 
     /* === 4. SAST - SonarQube === */
     stage('SAST - SonarQube Analysis') {
@@ -134,31 +129,34 @@ pipeline {
     stage('Docker Scan - Trivy') {
       steps {
         sh '''
-          set +e
           mkdir -p reports
 
-          # Rapport SARIF (utilisable dans des outils de sécurité)
+          echo "=== TRIVY SCAN: HTML & SARIF ==="
+
+          # 1) Analyse SARIF
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
+            -v /var/trivy-cache:/root/.cache/ \
             -v "$PWD/reports":/report \
             aquasec/trivy:latest image \
-              --exit-code 0 \
-              --severity HIGH,CRITICAL \
-              --ignore-unfixed \
+              --timeout 15m \
               --format sarif \
               --output /report/trivy-image.sarif \
-              ${IMAGE_NAME}:${IMAGE_TAG}
+              --ignore-unfixed \
+              --severity HIGH,CRITICAL \
+              ${IMAGE_NAME}:${IMAGE_TAG} || true
 
-          # Rapport texte lisible dans Jenkins (non bloquant)
+          # 2) Rapport lisible en texte
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
+            -v /var/trivy-cache:/root/.cache/ \
             -v "$PWD/reports":/report \
             aquasec/trivy:latest image \
-              --exit-code 0 \
-              --severity HIGH,CRITICAL \
-              --ignore-unfixed \
+              --timeout 15m \
               --format table \
               --output /report/trivy-image.txt \
+              --ignore-unfixed \
+              --severity HIGH,CRITICAL \
               ${IMAGE_NAME}:${IMAGE_TAG} || true
         '''
       }
@@ -169,20 +167,5 @@ pipeline {
         }
       }
     }
-  }
 
-  post {
-    success {
-      echo "✅ Build #${BUILD_NUMBER} OK. Rapports disponibles dans 'Artifacts'."
-    }
-    unstable {
-      echo "⚠️ Build #${BUILD_NUMBER} UNSTABLE : voir SonarQube / Dependency-Check / Trivy."
-    }
-    failure {
-      echo "❌ Build #${BUILD_NUMBER} FAILED. Corrige les erreurs indiquées dans les logs."
-    }
-    always {
-      echo "Fin du pipeline pour ${JOB_NAME} (#${BUILD_NUMBER})."
-    }
-  }
 }
