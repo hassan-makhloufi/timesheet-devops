@@ -1,14 +1,9 @@
-# Use a specific valid OpenJDK 17 slim image
-FROM eclipse-temurin:17-jdk
-
-# Set working directory
+FROM maven:3.8.6-eclipse-temurin-17 as build
 WORKDIR /app
+COPY . .
+RUN mvn clean package -DskipTests
 
-# Copy built jar into container
-COPY target/*.jar app.jar
-
-# Expose port your app runs on
-EXPOSE 8080
-
-# Run the app
-ENTRYPOINT ["java", "-jar", "app.jar"]
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+CMD ["java", "-jar", "app.jar"]
