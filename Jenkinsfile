@@ -27,7 +27,33 @@ pipeline {
       }
     }
 
-    /* === 2. Build + Tests Maven === */
+    /* === 2. Secrets Scan - Gitleaks (non bloquant) === */
+    stage('Secrets Scan - Gitleaks') {
+      steps {
+        sh '''
+          echo "=== Gitleaks : scan des secrets dans le repo ==="
+
+          mkdir -p reports
+
+          docker run --rm \
+            -v "$PWD":/repo \
+            zricethezav/gitleaks:latest \
+              detect \
+                -s /repo \
+                -f json \
+                -r /repo/reports/gitleaks-report.json || true
+        '''
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: 'reports/gitleaks-report.json',
+                           fingerprint: true,
+                           onlyIfSuccessful: false
+        }
+      }
+    }
+
+    /* === 3. Build + Tests Maven === */
     stage('Maven Build & Tests') {
       steps {
         sh 'mvn -B clean verify'
@@ -40,7 +66,7 @@ pipeline {
       }
     }
 
-    /* === 3. SCA - Dependency-Check (non bloquant) === */
+    /* === 4. SCA - Dependency-Check (non bloquant) === */
     stage('SCA - Dependency-Check') {
       steps {
         sh '''
@@ -58,7 +84,7 @@ pipeline {
               --out /report \
               --log /report/dc.log \
               --disableOssIndex \
-              --failOnCVSS 11.0 \
+              --failOnCVSS 9.0 \
               --nvdApiKey "$NVD_API_KEY" \
               --exclude /src/odc-data \
               --exclude /src/reports \
@@ -76,7 +102,7 @@ pipeline {
       }
     }
 
-    /* === 4. SAST - SonarQube === */
+    /* === 5. SAST - SonarQube === */
     stage('SAST - SonarQube Analysis') {
       steps {
         withSonarQubeEnv('sonarqube') {
@@ -99,7 +125,7 @@ pipeline {
       }
     }
 
-    /* === 5. Docker Build === */
+    /* === 6. Docker Build === */
     stage('Docker Build') {
       steps {
         sh '''
@@ -123,13 +149,13 @@ pipeline {
       }
     }
 
-    /* === 6. Docker Scan - Trivy === */
+    /* === 7. Docker Scan - Trivy === */
     stage('Docker Scan - Trivy') {
       steps {
         sh '''
           mkdir -p reports
 
-          echo "=== TRIVY SCAN: HTML & SARIF ==="
+          echo "=== TRIVY SCAN: SARIF & TEXTE ==="
 
           # 1) Analyse SARIF
           docker run --rm \
@@ -168,7 +194,7 @@ pipeline {
 
   }
 
-  /* === 7. Notifications email globales === */
+  /* === 8. Notifications email globales === */
   post {
     always {
       emailext(
@@ -198,6 +224,9 @@ pipeline {
               </a></li>
               <li><a href="http://192.168.50.4:9000/dashboard?id=devops_git">
                 Tableau de bord SonarQube
+              </a></li>
+              <li><a href="${env.BUILD_URL}artifact/reports/gitleaks-report.json">
+                Rapport Gitleaks (secrets)
               </a></li>
             </ul>
             <p>Envoyé automatiquement par Jenkins le ${new Date()}</p>
