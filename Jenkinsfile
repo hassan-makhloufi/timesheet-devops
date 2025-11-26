@@ -125,8 +125,8 @@ pipeline {
       }
     }
 
-    /* === 6. Docker Build === */
-    stage('Docker Build') {
+    /* === 6. Docker Build & Run App (pour DAST) === */
+    stage('Docker Build & Run App') {
       steps {
         sh '''
           echo "Workspace = $WORKSPACE"
@@ -145,11 +145,45 @@ pipeline {
 
           docker build -t ${IMAGE_NAME}:${IMAGE_TAG} \
                        -f "$DOCKERFILE_PATH" "$CONTEXT_DIR"
+
+          echo "=== Démarrage du conteneur applicatif pour les tests DAST ==="
+          docker rm -f timesheet-app || true
+
+          docker run -d --name timesheet-app \
+            -p 8080:8080 \
+            ${IMAGE_NAME}:${IMAGE_TAG}
+
+          echo "Attente du démarrage de l'application..."
+          sleep 20
         '''
       }
     }
 
-    /* === 7. Docker Scan - Trivy === */
+    /* === 7. DAST - OWASP ZAP Baseline (non bloquant) === */
+    stage('DAST - ZAP Baseline') {
+      steps {
+        sh '''
+          echo "=== ZAP BASELINE : scan DAST de l'application ==="
+
+          mkdir -p reports
+
+          docker run --rm \
+            --network=host \
+            -v "$PWD/reports":/zap/wrk \
+            -t owasp/zap2docker-stable zap-baseline.py \
+              -t http://localhost:8080 \
+              -r zap-report.html || true
+        '''
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: 'reports/zap-report.html',
+                           fingerprint: true
+        }
+      }
+    }
+
+    /* === 8. Docker Scan - Trivy === */
     stage('Docker Scan - Trivy') {
       steps {
         sh '''
@@ -192,9 +226,19 @@ pipeline {
       }
     }
 
+    /* === 9. Cleanup Docker === */
+    stage('Cleanup Docker') {
+      steps {
+        sh '''
+          echo "=== Nettoyage du conteneur applicatif ==="
+          docker rm -f timesheet-app || true
+        '''
+      }
+    }
+
   }
 
-  /* === 8. Notifications email globales === */
+  /* === 10. Notifications email globales === */
   post {
     always {
       emailext(
@@ -222,11 +266,11 @@ pipeline {
               <li><a href="${env.BUILD_URL}artifact/reports/trivy-image.sarif">
                 Rapport Trivy (SARIF)
               </a></li>
-              <li><a href="http://192.168.50.4:9000/dashboard?id=devops_git">
-                Tableau de bord SonarQube
-              </a></li>
               <li><a href="${env.BUILD_URL}artifact/reports/gitleaks-report.json">
                 Rapport Gitleaks (secrets)
+              </a></li>
+              <li><a href="${env.BUILD_URL}artifact/reports/zap-report.html">
+                Rapport OWASP ZAP (DAST)
               </a></li>
             </ul>
             <p>Envoyé automatiquement par Jenkins le ${new Date()}</p>
