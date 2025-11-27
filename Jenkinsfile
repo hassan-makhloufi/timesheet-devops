@@ -53,7 +53,36 @@ pipeline {
       }
     }
 
-    /* === 3. Build + Tests Maven === */
+    /* === 3. SAST - Semgrep (non bloquant) === */
+    stage('SAST - Semgrep') {
+      steps {
+        sh '''
+          echo "=== SEMGREP : Analyse statique du code (SAST) ==="
+
+          mkdir -p reports
+
+          docker run --rm \
+            -v "$PWD":/src \
+            -v "$PWD/reports":/reports \
+            returntocorp/semgrep semgrep \
+              --config=auto \
+              --json \
+              --output=/reports/semgrep-report.json || true
+
+          echo "=== Contenu du répertoire reports après Semgrep ==="
+          ls -l reports || true
+        '''
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: 'reports/semgrep-report.json',
+                           fingerprint: true,
+                           allowEmptyArchive: true
+        }
+      }
+    }
+
+    /* === 4. Build + Tests Maven === */
     stage('Maven Build & Tests') {
       steps {
         sh 'mvn -B clean verify'
@@ -66,7 +95,7 @@ pipeline {
       }
     }
 
-    /* === 4. SCA - Dependency-Check (non bloquant) === */
+    /* === 5. SCA - Dependency-Check (non bloquant) === */
     stage('SCA - Dependency-Check') {
       steps {
         sh '''
@@ -102,7 +131,7 @@ pipeline {
       }
     }
 
-    /* === 5. SAST - SonarQube === */
+    /* === 6. SAST - SonarQube === */
     stage('SAST - SonarQube Analysis') {
       steps {
         withSonarQubeEnv('sonarqube') {
@@ -125,7 +154,7 @@ pipeline {
       }
     }
 
-    /* === 6. Docker Build & Run App (pour DAST) === */
+    /* === 7. Docker Build & Run App (pour DAST) === */
     stage('Docker Build & Run App') {
       steps {
         sh '''
@@ -150,7 +179,7 @@ pipeline {
           docker rm -f timesheet-app || true
 
           docker run -d --name timesheet-app \
-            -p 8082:8080 \
+            -p 8082:8082 \
             ${IMAGE_NAME}:${IMAGE_TAG}
 
           echo "Attente du démarrage de l'application..."
@@ -159,36 +188,37 @@ pipeline {
       }
     }
 
-    /* === 7. DAST - OWASP ZAP Baseline (non bloquant) === */
-        /* === 7. DAST - ZAP Baseline (non bloquant) === */
-        stage('DAST - ZAP Baseline') {
-          steps {
-            sh '''
-              echo "=== ZAP BASELINE : scan DAST de l'application ==="
+    /* === 8. DAST - OWASP ZAP Baseline (non bloquant) === */
+    stage('DAST - ZAP Baseline') {
+      steps {
+        sh '''
+          echo "=== ZAP BASELINE : scan DAST de l'application ==="
 
-              mkdir -p reports
+          mkdir -p reports
 
-              docker run --rm \
-                -v "$PWD/reports":/zap/wrk \
-                owasp/zap2docker-stable zap-baseline.py \
-                  -t http://host.docker.internal:8082/timesheet-devops/user/retrieve-all-users \
-                  -r zap-report.html || true
+          docker run --rm \
+            -v "$PWD/reports":/zap/wrk \
+            owasp/zap2docker-stable zap-baseline.py \
+              -t http://host.docker.internal:8082/timesheet-devops \
+              -r zap-report.html || true
 
-              echo "Contenu du répertoire reports après ZAP :"
-              ls -l reports || true
-            '''
-          }
-          post {
-            always {
-              archiveArtifacts artifacts: 'reports/zap-report.html',
-                               fingerprint: true,
-                               allowEmptyArchive: true
-            }
-          }
+          if [ ! -f reports/zap-report.html ]; then
+            echo "<html><body><h2>ZAP n'a pas généré de rapport</h2><p>Voir les logs du stage 'DAST - ZAP Baseline' dans Jenkins.</p></body></html>" > reports/zap-report.html
+          fi
+
+          echo "=== Contenu du répertoire reports après ZAP ==="
+          ls -l reports || true
+        '''
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: 'reports/zap-report.html',
+                           fingerprint: true
         }
+      }
+    }
 
-
-    /* === 8. Docker Scan - Trivy === */
+    /* === 9. Docker Scan - Trivy === */
     stage('Docker Scan - Trivy') {
       steps {
         sh '''
@@ -231,7 +261,7 @@ pipeline {
       }
     }
 
-    /* === 9. Cleanup Docker === */
+    /* === 10. Cleanup Docker === */
     stage('Cleanup Docker') {
       steps {
         sh '''
@@ -243,7 +273,7 @@ pipeline {
 
   }
 
-  /* === 10. Notifications email globales === */
+  /* === 11. Notifications email globales === */
   post {
     always {
       emailext(
@@ -262,8 +292,14 @@ pipeline {
             <h3>Liens utiles</h3>
             <ul>
               <li><a href="${env.BUILD_URL}">Détail du build Jenkins</a></li>
+              <li><a href="${env.BUILD_URL}artifact/reports/gitleaks-report.json">
+                Rapport Gitleaks (secrets)
+              </a></li>
+              <li><a href="${env.BUILD_URL}artifact/reports/semgrep-report.json">
+                Rapport Semgrep (SAST)
+              </a></li>
               <li><a href="${env.BUILD_URL}artifact/reports/dependency-check/dependency-check-report.html">
-                Rapport OWASP Dependency-Check (HTML)
+                Rapport OWASP Dependency-Check (SCA)
               </a></li>
               <li><a href="${env.BUILD_URL}artifact/reports/trivy-image.txt">
                 Rapport Trivy (texte)
@@ -271,11 +307,11 @@ pipeline {
               <li><a href="${env.BUILD_URL}artifact/reports/trivy-image.sarif">
                 Rapport Trivy (SARIF)
               </a></li>
-              <li><a href="${env.BUILD_URL}artifact/reports/gitleaks-report.json">
-                Rapport Gitleaks (secrets)
-              </a></li>
               <li><a href="${env.BUILD_URL}artifact/reports/zap-report.html">
                 Rapport OWASP ZAP (DAST)
+              </a></li>
+              <li><a href="http://192.168.50.4:9000/dashboard?id=devops_git">
+                Tableau de bord SonarQube
               </a></li>
             </ul>
             <p>Envoyé automatiquement par Jenkins le ${new Date()}</p>
