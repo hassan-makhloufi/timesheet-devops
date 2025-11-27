@@ -150,7 +150,7 @@ pipeline {
           docker rm -f timesheet-app || true
 
           docker run -d --name timesheet-app \
-            -p 8080:8080 \
+            -p 8082:8080 \
             ${IMAGE_NAME}:${IMAGE_TAG}
 
           echo "Attente du démarrage de l'application..."
@@ -171,7 +171,7 @@ pipeline {
             --network=host \
             -v "$PWD/reports":/zap/wrk \
             -t owasp/zap2docker-stable zap-baseline.py \
-              -t http://localhost:8080 \
+              -t http://localhost:8082 \
               -r zap-report.html || true
         '''
       }
