@@ -161,27 +161,29 @@ pipeline {
 
     /* === 7. DAST - OWASP ZAP Baseline (non bloquant) === */
     stage('DAST - ZAP Baseline') {
-      steps {
-        sh '''
-          echo "=== ZAP BASELINE : scan DAST de l'application ==="
+        steps {
+            sh '''
+                echo "=== ZAP BASELINE : scan DAST de l'application ==="
+                mkdir -p reports
 
-          mkdir -p reports
-
-          docker run --rm \
-            --network=host \
-            -v "$PWD/reports":/zap/wrk \
-            -t owasp/zap2docker-stable zap-baseline.py \
-              -t http://localhost:8082 \
-              -r zap-report.html || true
-        '''
-      }
-      post {
-        always {
-          archiveArtifacts artifacts: 'reports/zap-report.html',
-                           fingerprint: true
+                docker run --rm \
+                  -v "$PWD/reports":/zap/wrk \
+                  owasp/zap2docker-stable zap-baseline.py \
+                    -t http://host.docker.internal:8082/timesheet-devops \
+                    -r zap-report.html \
+                    -J zap-report.json \
+                    -x zap-report.xml \
+                    || true
+            '''
         }
-      }
+        post {
+            always {
+                archiveArtifacts artifacts: 'reports/zap-report.*',
+                                 fingerprint: true
+            }
+        }
     }
+
 
     /* === 8. Docker Scan - Trivy === */
     stage('Docker Scan - Trivy') {
