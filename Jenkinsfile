@@ -160,29 +160,32 @@ pipeline {
     }
 
     /* === 7. DAST - OWASP ZAP Baseline (non bloquant) === */
-    stage('DAST - ZAP Baseline') {
-        steps {
+        /* === 7. DAST - ZAP Baseline (non bloquant) === */
+        stage('DAST - ZAP Baseline') {
+          steps {
             sh '''
-                echo "=== ZAP BASELINE : scan DAST de l'application ==="
-                mkdir -p reports
+              echo "=== ZAP BASELINE : scan DAST de l'application ==="
 
-                docker run --rm \
-                  -v "$PWD/reports":/zap/wrk \
-                  owasp/zap2docker-stable zap-baseline.py \
-                    -t http://host.docker.internal:8082/timesheet-devops \
-                    -r zap-report.html \
-                    -J zap-report.json \
-                    -x zap-report.xml \
-                    || true
+              mkdir -p reports
+
+              docker run --rm \
+                -v "$PWD/reports":/zap/wrk \
+                owasp/zap2docker-stable zap-baseline.py \
+                  -t http://host.docker.internal:8082/timesheet-devops/user/retrieve-all-users \
+                  -r zap-report.html || true
+
+              echo "Contenu du répertoire reports après ZAP :"
+              ls -l reports || true
             '''
-        }
-        post {
+          }
+          post {
             always {
-                archiveArtifacts artifacts: 'reports/zap-report.*',
-                                 fingerprint: true
+              archiveArtifacts artifacts: 'reports/zap-report.html',
+                               fingerprint: true,
+                               allowEmptyArchive: true
             }
+          }
         }
-    }
 
 
     /* === 8. Docker Scan - Trivy === */
