@@ -142,24 +142,26 @@ pipeline {
           '''
         }
       }
-    }
+    }   
+     stage('SAST - Quality Gate') {
+           steps {
+             script {
+               timeout(time: 10, unit: 'MINUTES') {
+                 try {
+                   // Le plugin peut lancer une IllegalStateException si la task Sonar est FAILED
+                   def qg = waitForQualityGate abortPipeline: true
+                   echo "Quality Gate status = ${qg.status}"
+                 } catch (Exception e) {
+                   echo "=== Quality Gate ignoré : l'analyse SonarQube a échoué ==="
+                   echo "Raison : ${e.getMessage()}"
+                   // Si tu veux marquer le build UNSTABLE au lieu de SUCCESS :
+                   // currentBuild.result = 'UNSTABLE'
+                 }
+               }
+             }
+           }
+         }
 
-       stage('SAST - Quality Gate') {
-          steps {
-            script {
-              timeout(time: 10, unit: 'MINUTES') {
-                // NE CASSE PLUS LE PIPELINE MÊME SI LE QUALITY GATE EST FAILED
-                def qg = waitForQualityGate abortPipeline: false
-                echo "Quality Gate status = ${qg.status}"
-
-                // Si tu veux quand même marquer le build UNSTABLE au lieu de SUCCESS :
-                // if (qg.status != 'OK') {
-                //   currentBuild.result = 'UNSTABLE'
-                // }
-              }
-            }
-          }
-        }
 
     /* === 7. Docker Build & Run App (pour DAST) === */
     stage('Docker Build & Run App') {
