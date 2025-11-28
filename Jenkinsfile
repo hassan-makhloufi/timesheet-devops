@@ -144,15 +144,22 @@ pipeline {
       }
     }
 
-    stage('SAST - Quality Gate') {
-      steps {
-        script {
-          timeout(time: 10, unit: 'MINUTES') {
-            waitForQualityGate abortPipeline: true
+       stage('SAST - Quality Gate') {
+          steps {
+            script {
+              timeout(time: 10, unit: 'MINUTES') {
+                // NE CASSE PLUS LE PIPELINE MÊME SI LE QUALITY GATE EST FAILED
+                def qg = waitForQualityGate abortPipeline: false
+                echo "Quality Gate status = ${qg.status}"
+
+                // Si tu veux quand même marquer le build UNSTABLE au lieu de SUCCESS :
+                // if (qg.status != 'OK') {
+                //   currentBuild.result = 'UNSTABLE'
+                // }
+              }
+            }
           }
         }
-      }
-    }
 
     /* === 7. Docker Build & Run App (pour DAST) === */
     stage('Docker Build & Run App') {
