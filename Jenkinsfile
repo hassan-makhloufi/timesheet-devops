@@ -59,18 +59,19 @@ pipeline {
 
           mkdir -p reports
 
-          # --error -> Semgrep retourne exit code != 0 si findings importants
+          # On monte le workspace dans /workspace
           docker run --rm \
-            -v "$PWD":/src \
-            -v "$PWD/reports":/reports \
+            -v "$PWD":/workspace \
+            -w /workspace \
             returntocorp/semgrep semgrep \
               --config=auto \
               --error \
               --json \
-              --output=/reports/semgrep-report.json
-
-          echo "=== Contenu du répertoire reports après Semgrep ==="
-          ls -l reports || true
+              --output=reports/semgrep-report.json \
+              src/main/java
+              # ^^^^^^^^^^^
+              # Semgrep ne scanne que le dossier du code source,
+              # il ignore reports/, target/, etc.
         '''
       }
       post {
