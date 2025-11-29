@@ -5,12 +5,12 @@
 
 	<modelVersion>4.0.0</modelVersion>
 
-	<!-- Parent Spring Boot mis à jour -->
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.7.18</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<!-- mise à jour pour corriger CVE Spring / Tomcat -->
+		<version>2.5.15</version>
+		<relativePath/>
 	</parent>
 
 	<groupId>tn.esprit.spring.services</groupId>
@@ -20,19 +20,15 @@
 	<description>tp-spring-jsf-crud</description>
 
 	<properties>
-		<!-- Tu peux rester en Java 8 pour ton TP -->
 		<java.version>1.8</java.version>
-		<maven-jar-plugin.version>3.1.1</maven-jar-plugin.version>
 
-		<!-- Versions plus récentes pour corriger les vulnérabilités -->
-		<jackson.version>2.15.3</jackson.version>
-		<mysql.version>8.0.33</mysql.version>
+		<!-- versions sécurisées -->
+		<mysql.version>9.1.0</mysql.version>
 		<snakeyaml.version>2.2</snakeyaml.version>
-		<logback.version>1.2.13</logback.version>
 	</properties>
 
 	<dependencies>
-		<!-- Spring Data JPA -->
+		<!-- Spring JPA -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -44,7 +40,7 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
-		<!-- Devtools -->
+		<!-- DevTools -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
@@ -52,33 +48,18 @@
 			<optional>true</optional>
 		</dependency>
 
-		<!-- MySQL driver : version corrigée -->
+		<!-- MySQL driver mis à jour -->
 		<dependency>
-			<groupId>mysql</groupId>
-			<artifactId>mysql-connector-java</artifactId>
+			<groupId>com.mysql</groupId>
+			<artifactId>mysql-connector-j</artifactId>
 			<version>${mysql.version}</version>
-			<scope>runtime</scope>
 		</dependency>
 
-		<!-- Jackson databind : version corrigée -->
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-databind</artifactId>
-			<version>${jackson.version}</version>
-		</dependency>
-
-		<!-- SnakeYAML : version corrigée -->
+		<!-- Snakeyaml mis à jour -->
 		<dependency>
 			<groupId>org.yaml</groupId>
 			<artifactId>snakeyaml</artifactId>
 			<version>${snakeyaml.version}</version>
-		</dependency>
-
-		<!-- Logback core : version corrigée -->
-		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-core</artifactId>
-			<version>${logback.version}</version>
 		</dependency>
 
 		<!-- Tests -->
@@ -89,7 +70,6 @@
 		</dependency>
 	</dependencies>
 
-	<!-- Deploy to Nexus -->
 	<distributionManagement>
 		<repository>
 			<id>deploymentRepo</id>
@@ -104,12 +84,6 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-resources-plugin</artifactId>
-				<version>3.1.0</version>
-			</plugin>
 		</plugins>
 	</build>
-
 </project>
