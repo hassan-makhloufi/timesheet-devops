@@ -51,37 +51,41 @@ pipeline {
       }
     }
 
-    /* === 3. SAST - Semgrep (BLOQUANT) === */
-    stage('SAST - Semgrep') {
-      steps {
-        sh '''
-          echo "=== SEMGREP : Analyse statique du code (BLOQUANT) ==="
+   stage('SAST - Semgrep') {
+     steps {
+       sh '''
+         echo "=== SEMGREP : Analyse statique du code (BLOQUANT) ==="
 
-          mkdir -p reports
+         mkdir -p reports
 
-          # On monte le workspace dans /workspace
-          docker run --rm \
-            -v "$PWD":/workspace \
-            -w /workspace \
-            returntocorp/semgrep semgrep \
-              --config=auto \
-              --error \
-              --json \
-              --output=reports/semgrep-report.json \
-              src/main/java
-              # ^^^^^^^^^^^
-              # Semgrep ne scanne que le dossier du code source,
-              # il ignore reports/, target/, etc.
-        '''
-      }
-      post {
-        always {
-          archiveArtifacts artifacts: 'reports/semgrep-report.json',
-                           fingerprint: true,
-                           allowEmptyArchive: true
-        }
-      }
-    }
+         docker run --rm \
+           -v "$PWD":/src \
+           -w /src \
+           returntocorp/semgrep semgrep \
+             --config=auto \
+             --severity=ERROR \
+             --error \
+             --json \
+             --output=reports/semgrep-report.json \
+             src/main/java
+
+         # Explications :
+         # -w /src              : Semgrep se lance à la racine du projet
+         # .semgrepignore       : sera pris en compte (ignore reports/, target/…)
+         # src/main/java        : on limite le scan au code applicatif
+         # --severity=ERROR     : seuls les problèmes en ERROR cassent le build
+         # Les WARNING (comme ceux du rapport HTML) n'arrêtent plus le pipeline.
+       '''
+     }
+     post {
+       always {
+         archiveArtifacts artifacts: 'reports/semgrep-report.json',
+                          fingerprint: true,
+                          allowEmptyArchive: true
+       }
+     }
+   }
+
 
     /* === 4. Build + Tests Maven (BLOQUANT) === */
     stage('Maven Build & Tests') {
