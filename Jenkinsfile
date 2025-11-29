@@ -7,11 +7,8 @@ pipeline {
   }
 
   environment {
-    // Image Docker produite par le pipeline
     IMAGE_NAME  = "hassan/timesheet-devops"
     IMAGE_TAG   = "1.0.${BUILD_NUMBER}"
-
-    // Clé NVD utilisée par OWASP Dependency-Check (credentials Jenkins)
     NVD_API_KEY = credentials('nvd-api-key')
   }
 
@@ -27,21 +24,22 @@ pipeline {
       }
     }
 
-    /* === 2. Secrets Scan - Gitleaks (non bloquant) === */
+    /* === 2. Secrets Scan - Gitleaks (BLOQUANT) === */
     stage('Secrets Scan - Gitleaks') {
       steps {
         sh '''
-          echo "=== Gitleaks : scan des secrets dans le repo ==="
+          echo "=== Gitleaks : scan des secrets dans le repo (BLOQUANT) ==="
 
           mkdir -p reports
 
+          # Si Gitleaks trouve des secrets -> exit code != 0 -> stage FAILED -> pipeline arrêté
           docker run --rm \
             -v "$PWD":/repo \
             zricethezav/gitleaks:latest \
               detect \
                 -s /repo \
                 -f json \
-                -r /repo/reports/gitleaks-report.json || true
+                -r /repo/reports/gitleaks-report.json
         '''
       }
       post {
@@ -53,21 +51,23 @@ pipeline {
       }
     }
 
-    /* === 3. SAST - Semgrep (non bloquant) === */
+    /* === 3. SAST - Semgrep (BLOQUANT) === */
     stage('SAST - Semgrep') {
       steps {
         sh '''
-          echo "=== SEMGREP : Analyse statique du code (SAST) ==="
+          echo "=== SEMGREP : Analyse statique du code (BLOQUANT) ==="
 
           mkdir -p reports
 
+          # --error -> Semgrep retourne exit code != 0 si findings importants
           docker run --rm \
             -v "$PWD":/src \
             -v "$PWD/reports":/reports \
             returntocorp/semgrep semgrep \
               --config=auto \
+              --error \
               --json \
-              --output=/reports/semgrep-report.json || true
+              --output=/reports/semgrep-report.json
 
           echo "=== Contenu du répertoire reports après Semgrep ==="
           ls -l reports || true
@@ -82,10 +82,13 @@ pipeline {
       }
     }
 
-    /* === 4. Build + Tests Maven === */
+    /* === 4. Build + Tests Maven (BLOQUANT) === */
     stage('Maven Build & Tests') {
       steps {
-        sh 'mvn -B clean verify'
+        sh '''
+          echo "=== Build & Tests Maven (BLOQUANT) ==="
+          mvn -B clean verify
+        '''
       }
       post {
         always {
@@ -95,11 +98,12 @@ pipeline {
       }
     }
 
-    /* === 5. SCA - Dependency-Check (non bloquant) === */
+    /* === 5. SCA - Dependency-Check (BLOQUANT) === */
     stage('SCA - Dependency-Check') {
       steps {
         sh '''
-          set +e
+          echo "=== Dependency-Check (BLOQUANT si CVSS >= 7.0) ==="
+
           mkdir -p odc-data reports/dependency-check
 
           docker run --rm \
@@ -113,14 +117,14 @@ pipeline {
               --out /report \
               --log /report/dc.log \
               --disableOssIndex \
-              --failOnCVSS 9.0 \
+              --failOnCVSS 7.0 \
               --nvdApiKey "$NVD_API_KEY" \
               --exclude /src/odc-data \
               --exclude /src/reports \
               --exclude /src/target \
-              --exclude /src/**/dc.zip || true
+              --exclude /src/**/dc.zip
 
-          test -s reports/dependency-check/dependency-check-report.html || true
+          # Si vulnérabilité CVSS >= 7 -> exit != 0 -> pipeline FAIL
         '''
       }
       post {
@@ -131,37 +135,31 @@ pipeline {
       }
     }
 
-    /* === 6. SAST - SonarQube === */
+    /* === 6. SAST - SonarQube + Quality Gate (BLOQUANT) === */
     stage('SAST - SonarQube Analysis') {
       steps {
         withSonarQubeEnv('sonarqube') {
           sh '''
+            echo "=== Analyse SonarQube ==="
             mvn -B sonar:sonar \
               -Dsonar.projectKey=devops_git \
               -Dsonar.projectName=timesheet-devops
           '''
         }
       }
-    }   
-     stage('SAST - Quality Gate') {
-           steps {
-             script {
-               timeout(time: 10, unit: 'MINUTES') {
-                 try {
-                   // Le plugin peut lancer une IllegalStateException si la task Sonar est FAILED
-                   def qg = waitForQualityGate abortPipeline: true
-                   echo "Quality Gate status = ${qg.status}"
-                 } catch (Exception e) {
-                   echo "=== Quality Gate ignoré : l'analyse SonarQube a échoué ==="
-                   echo "Raison : ${e.getMessage()}"
-                   // Si tu veux marquer le build UNSTABLE au lieu de SUCCESS :
-                   // currentBuild.result = 'UNSTABLE'
-                 }
-               }
-             }
-           }
-         }
+    }
 
+    stage('SAST - Quality Gate') {
+      steps {
+        timeout(time: 10, unit: 'MINUTES') {
+          script {
+            // Ici, si Quality Gate = FAILED -> le pipeline s'arrête (abortPipeline: true)
+            def qg = waitForQualityGate abortPipeline: true
+            echo "Quality Gate status = ${qg.status}"
+          }
+        }
+      }
+    }
 
     /* === 7. Docker Build & Run App (pour DAST) === */
     stage('Docker Build & Run App') {
@@ -197,22 +195,24 @@ pipeline {
       }
     }
 
-    /* === 8. DAST - OWASP ZAP Baseline (non bloquant) === */
+    /* === 8. DAST - OWASP ZAP Baseline (BLOQUANT) === */
     stage('DAST - ZAP Baseline') {
       steps {
         sh '''
-          echo "=== ZAP BASELINE : scan DAST de l'application ==="
+          echo "=== ZAP BASELINE : scan DAST de l'application (BLOQUANT) ==="
 
           mkdir -p reports
 
+          # zap-baseline retourne exit != 0 si alertes au-dessus d'un certain niveau
           docker run --rm \
             -v "$PWD/reports":/zap/wrk \
             owasp/zap2docker-stable zap-baseline.py \
               -t http://host.docker.internal:8082/timesheet-devops \
-              -r zap-report.html || true
+              -r zap-report.html
 
           if [ ! -f reports/zap-report.html ]; then
-            echo "<html><body><h2>ZAP n'a pas généré de rapport</h2><p>Voir les logs du stage 'DAST - ZAP Baseline' dans Jenkins.</p></body></html>" > reports/zap-report.html
+            echo "ZAP n'a pas généré de rapport, on considère ça comme une erreur."
+            exit 1
           fi
 
           echo "=== Contenu du répertoire reports après ZAP ==="
@@ -227,15 +227,15 @@ pipeline {
       }
     }
 
-    /* === 9. Docker Scan - Trivy === */
+    /* === 9. Docker Scan - Trivy (BLOQUANT) === */
     stage('Docker Scan - Trivy') {
       steps {
         sh '''
           mkdir -p reports
 
-          echo "=== TRIVY SCAN: SARIF & TEXTE ==="
+          echo "=== TRIVY SCAN: BLOQUANT si HIGH/CRITICAL ==="
 
-          # 1) Analyse SARIF
+          # Analyse SARIF + exit-code 1 si vulnérabilités HIGH/CRITICAL
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v /var/trivy-cache:/root/.cache/ \
@@ -246,9 +246,10 @@ pipeline {
               --output /report/trivy-image.sarif \
               --ignore-unfixed \
               --severity HIGH,CRITICAL \
-              ${IMAGE_NAME}:${IMAGE_TAG} || true
+              --exit-code 1 \
+              ${IMAGE_NAME}:${IMAGE_TAG}
 
-          # 2) Rapport lisible en texte
+          # Rapport lisible en texte (si celui-là fail aussi, ça casse le stage)
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v /var/trivy-cache:/root/.cache/ \
@@ -259,7 +260,8 @@ pipeline {
               --output /report/trivy-image.txt \
               --ignore-unfixed \
               --severity HIGH,CRITICAL \
-              ${IMAGE_NAME}:${IMAGE_TAG} || true
+              --exit-code 1 \
+              ${IMAGE_NAME}:${IMAGE_TAG}
         '''
       }
       post {
@@ -292,7 +294,7 @@ pipeline {
         body: """
         <html>
           <body>
-            <h2>Rapport d'exécution du pipeline DevSecOps</h2>
+            <h2>Rapport d'exécution du pipeline DevSecOps (BLOQUANT)</h2>
             <p><b>Job :</b> ${env.JOB_NAME}</p>
             <p><b>Build :</b> #${env.BUILD_NUMBER}</p>
             <p><b>Résultat :</b> <span style='color:${currentBuild.currentResult == "SUCCESS" ? "green" : "red"}'>

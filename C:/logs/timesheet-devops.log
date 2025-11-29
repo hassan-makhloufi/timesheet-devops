@@ -1,17 +1,3 @@
-2025-11-28 15:54:27 - INFO  - tn.esprit.spring.TimesheetDevopsApplication - Starting TimesheetDevopsApplication using Java 22 on MBP-de-Hassan.lan with PID 67702 (/Users/hassan/Downloads/devops-main/target/classes started by hassan in /Users/hassan/Downloads/devops-main)
-2025-11-28 15:54:27 - INFO  - tn.esprit.spring.TimesheetDevopsApplication - No active profile set, falling back to default profiles: default
-2025-11-28 15:54:29 - INFO  - org.apache.catalina.core.StandardService - Starting service [Tomcat]
-2025-11-28 15:54:29 - INFO  - org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/9.0.52]
-2025-11-28 15:54:29 - INFO  - o.a.c.c.C.[Tomcat].[localhost].[/timesheet-devops] - Initializing Spring embedded WebApplicationContext
-2025-11-28 15:54:29 - INFO  - org.hibernate.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
-2025-11-28 15:54:29 - INFO  - org.hibernate.Version - HHH000412: Hibernate ORM core version 5.4.32.Final
-2025-11-28 15:54:30 - INFO  - org.hibernate.annotations.common.Version - HCANN000001: Hibernate Commons Annotations {5.1.2.Final}
-2025-11-28 15:54:30 - INFO  - org.hibernate.dialect.Dialect - HHH000400: Using dialect: org.hibernate.dialect.MySQL5InnoDBDialect
-2025-11-28 15:54:32 - INFO  - o.h.e.transaction.jta.platform.internal.JtaPlatformInitiator - HHH000490: Using JtaPlatform implementation: [org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform]
-2025-11-28 15:54:32 - WARN  - o.s.b.a.orm.jpa.JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
-2025-11-28 15:54:32 - INFO  - tn.esprit.spring.TimesheetDevopsApplication - Started TimesheetDevopsApplication in 6.508 seconds (JVM running for 7.635)
-2025-11-28 16:32:18 - WARN  - com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=6m17s312ms).
-2025-11-28 16:42:57 - WARN  - com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=10m4s700ms).
-2025-11-28 16:45:31 - WARN  - com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=2m34s261ms).
-2025-11-28 17:34:10 - WARN  - com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=48m39s46ms).
-2025-11-28 17:48:04 - INFO  - o.a.c.c.C.[Tomcat].[localhost].[/timesheet-devops] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-11-29 08:40:07 - WARN  - com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=11h52m857ms).
+2025-11-29 08:52:04 - WARN  - com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=10m55s187ms).
+2025-11-29 09:26:51 - WARN  - com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=15m43s133ms).
