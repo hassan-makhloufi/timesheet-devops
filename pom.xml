@@ -1,35 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
 	<modelVersion>4.0.0</modelVersion>
+
+	<!-- Parent Spring Boot mis à jour -->
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.5.4</version>
-		<relativePath /> <!-- lookup parent from repository -->
+		<version>2.7.18</version>
+		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
+
 	<groupId>tn.esprit.spring.services</groupId>
 	<artifactId>timesheet-devops</artifactId>
 	<version>1.0</version>
 	<name>timesheet-devops</name>
 	<description>tp-spring-jsf-crud</description>
+
 	<properties>
+		<!-- Tu peux rester en Java 8 pour ton TP -->
 		<java.version>1.8</java.version>
 		<maven-jar-plugin.version>3.1.1</maven-jar-plugin.version>
+
+		<!-- Versions plus récentes pour corriger les vulnérabilités -->
+		<jackson.version>2.15.3</jackson.version>
+		<mysql.version>8.0.33</mysql.version>
+		<snakeyaml.version>2.2</snakeyaml.version>
+		<logback.version>1.2.13</logback.version>
 	</properties>
+
 	<dependencies>
+		<!-- Spring Data JPA -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
+
+		<!-- Spring Web -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
-		</dependency> 
+		</dependency>
 
-
-
-
+		<!-- Devtools -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
@@ -37,22 +52,41 @@
 			<optional>true</optional>
 		</dependency>
 
+		<!-- MySQL driver : version corrigée -->
 		<dependency>
 			<groupId>mysql</groupId>
 			<artifactId>mysql-connector-java</artifactId>
+			<version>${mysql.version}</version>
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Jackson databind : version corrigée -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>${jackson.version}</version>
+		</dependency>
 
+		<!-- SnakeYAML : version corrigée -->
+		<dependency>
+			<groupId>org.yaml</groupId>
+			<artifactId>snakeyaml</artifactId>
+			<version>${snakeyaml.version}</version>
+		</dependency>
 
+		<!-- Logback core : version corrigée -->
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-core</artifactId>
+			<version>${logback.version}</version>
+		</dependency>
+
+		<!-- Tests -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-
-
-
 	</dependencies>
 
 	<!-- Deploy to Nexus -->
